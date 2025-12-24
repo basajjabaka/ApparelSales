@@ -208,7 +208,7 @@ __marimo__/
 
 
 
-* .md 
-* .synctex.gz
+*.md 
+*.synctex.gz
 
 
