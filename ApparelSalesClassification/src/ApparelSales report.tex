@@ -1,0 +1,243 @@
+% LaTeX Template for short student reports.
+\documentclass[a4paper, 11pt]{article}
+\usepackage[top=3cm, bottom=3cm, left = 2cm, right = 2cm]{geometry} 
+\geometry{a4paper} 
+\usepackage[utf8]{inputenc}
+\usepackage{textcomp}
+\usepackage{graphicx} 
+\usepackage{amsmath,amssymb}  
+\usepackage{bm}  
+\usepackage[pdftex,bookmarks,colorlinks,breaklinks]{hyperref}  
+\hypersetup{linkcolor=black,citecolor=green,filecolor=black,urlcolor=blue}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\pagestyle{fancy}
+
+\title{\textbf{Amazon International Apparel Sales Data Cleaning Challenge Report.}}
+\author{\href{mailto:64basajjabaka@gmail.com}{64basajjabaka@gmail.com}\quad\textbullet\quad
+\href{https://x.com/kmbasajjabaka}{Basajja On X} \quad\textbullet\quad
+\href{https://github.com/basajjabaka/ApparelSales}{Basajja On Github}}
+\date{December 24, 2024}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\pagebreak
+
+\section{Executive Summary}
+This report documents the comprehensive data cleaning process applied to the Amazon Apparel Sales dataset. The original dataset contained 37,432 entries with 10 columns, and through systematic cleaning and validation, the dataset was refined to 36,391 entries with 8 columns, ensuring data quality and consistency for downstream analysis.
+
+\section{Dataset Overview}
+\subsection{Initial State}
+\begin{itemize}[topsep=0pt, itemsep=0pt, parsep=0pt, partopsep=0pt]
+  \item Total Records : 37,432 
+  \item Total Columns : 10 
+  \item Data Types : 1 integer column (index), 9 object columns
+\end{itemize}
+
+\subsection{Columns in Original Dataset}
+\begin{enumerate}[start=0]
+\item \texttt{index} - Integer index column
+\item \texttt{DATE} - Date information (object type)
+\item \texttt{Months} - Month information (object type)
+\item \texttt{CUSTOMER} - Customer names (object type)
+\item \texttt{Style} - Product style codes (object type)
+\item \texttt{SKU} - Stock Keeping Unit codes (object type)
+\item \texttt{Size} - Product sizes (object type)
+\item \texttt{PCS} - Pieces/quantity (object type)
+\item \texttt{RATE} - Price rate (object type)
+\item \texttt{GROSS AMT} - Gross amount (object type)
+\end{enumerate}
+
+\pagebreak
+
+\section{Initial Data Preparation}
+At this stage, I standardised all column names to lowercase and replaced spaces with underscores (\texttt{\_}). This was in order to have a consistent naming convention improve code readability and prevent errors from case sensitivity. \\
+
+
+
+Next I dropped the \texttt{index} column as it was redundant hence remaining with 9 columns.
+
+\section{Data Cleaning By Column}
+\subsection{Date Column}
+First I established that there was one row without an observation for the date feature and so I dropped it. Since it is the date column, my next step was to try to convert it to datetime type without coercing errors, but it throws a value error.\\
+
+\begin{figure}[h]
+ \centering 
+ \includegraphics[]{..//visuals//dateError.png}
+ \caption{Code Extract Showing the ValueError}
+ \label{Figure 1}
+\end{figure}
+
+On further inspection, I found out that it contained non-date values including: Customer names, Style codes, Months, and Column Names. \\
+
+To solve this conundrum I embarked on the strategy below:
+\begin{enumerate}[start=1]
+\item Identified misplaced data: Separated date entries into two categories:
+\begin{itemize}
+  \item Entries with numbers (actual dates or style codes)
+  \item Entries without numbers (customer names)
+\end{itemize}
+\item Style column imputation:
+\begin{itemize}
+\item For date entries starting with a letter where style was null, filled style column with the date value
+\item Result: 1,037 style observations were recovered
+\end{itemize}
+\item Customer column imputation:
+\begin{itemize}
+\item For date entries without numbers where customer was null, filled customer column with the date value
+\item Result: 2 customer observations were recovered
+\end{itemize}
+\item Special markers handling:
+\begin{itemize}
+\item For entries containing 'SKU', 'Style', or 'CUSTOMER' in the date column, set customer to 'Unspecified'
+\item Impact: This data recovery step significantly improved data completeness by utilizing misplaced information.
+\end{itemize}
+\end{enumerate}
+
+\subsection{Months}
+On initial inspection of this column, I found 37,407 non-null entries with 24 missing values. I continued by examining rows with missing months values and found no meaningful data in other columns. \\
+
+\begin{figure}[h]
+ \centering 
+ \includegraphics[]{..//visuals//24Null.png}
+ \caption{Code Extract Showing the 24 Meaningless Observations}
+ \label{Figure 2}
+\end{figure}
+
+My action point here was to drop all 24 rows with missing months values resulting in 37,407 entries remaining. \\
+
+Then i embarked on Format Standardization with 'Mon-YY' (e.g., 'Jun-21', 'Apr-22') as the Target Format. This is achieved through the following steps: 
+
+\begin{enumerate}[start=1]
+\item Format Detection and Imputation:
+\begin{itemize}
+\item Created functions to identify correct format (\texttt{rformat}: 'Mon-YY') and date format (\texttt{wformat}: 'MM-DD-YY')
+\item For rows with incorrect month formats, if customer column had correct 'Mon-YY' format, used customer value else used date value if date column had 'MM-DD-YY' format.
+\end{itemize}
+\item Date Format Conversion:
+\begin{itemize}
+ \item Converted date-like formats ('MM-DD-YY') to month format ('Mon-YY')
+\item Created month mapping: '01'$\to$'Jan', '02'$\to$'Feb', etc.
+\item Applied conversion: '03-09-22' $\to$ 'Mar-22'
+\end{itemize}
+\item Format Cleanup:
+\begin{itemize}
+\item Removed middle date portion from formats like 'Nov-03-21' $\to$ 'Nov-21'
+\item Applied regex pattern matching to ensure 'Mon-YY' format.
+\end{itemize}
+\item Final Validation:
+\begin{itemize}
+\item Correct format: 36,391 entries
+\item Incorrect format: 1,016 entries
+\end{itemize}
+\end{enumerate}
+
+Through this, I dropped 1,016 rows that could not be transformed to the required format, leaving 36,391 entries with standardised 'Mon-YY' format in months column.
+
+\subsection{Customer Column}
+My initial inspection saw 36,391 Non-null entries and 158 Unique customers before cleaning. \\
+For Date-like Value Removal, some month values ('Jun-21', 'Jul-21', etc.) were present in the customer column and replaced with "Unspecified" observation. \\
+For whitespace Cleaning, stripped leading and trailing spaces and converted all names to lowercase. This resulted in 150 unique customers.
+
+\subsection{Style Column}
+Converted all style codes to lowercase. Stripped leading and trailing whitespace. This resulted into 36,391 non-null entries \& 149 Unique styles after normalization.
+
+\subsection{SKU Column}
+This column had 1,434 missing values. I converted SKU to string type, lowercase and stripped whitespace. After conversion, NaN values became the string 'nan'. \\
+I created a helper column \texttt{skuuuu} by extracting the last segment. For the 1,434 'nan' SKU observations I used the format: \texttt{\{style\}-un-\{size\}}.
+
+\subsection{Size Column}
+Replacements: '5XL' $\to$ 'xxxxxl', '6XL' $\to$ 'xxxxxxl', '4XL' $\to$ 'xxxxl'. I identified numeric values in size column and used the \texttt{skuuuu} helper column to infer correct sizes.
+
+\subsection{Numeric Columns}
+Columns \texttt{pcs}, \texttt{rate}, and \texttt{gross\_amt} were converted to datatype \texttt{float64}.
+
+\section{Feature Engineering}
+\subsection{Month Feature Creation}
+Extracted month abbreviation and year from \texttt{months} column to create \texttt{month} feature as a Period object. Dropped redundant 'date', 'months', and 'skuuu' columns.
+
+\section{Final Dataset State}
+\subsection{Final Statistics}
+\begin{itemize}
+\item Total Records: 36,391 observations.
+\item Total Columns: 8 columns.
+\item Data Types: 5 Object columns, 3 Float64 columns.
+\end{itemize}
+
+\subsection{Final Column Structure}
+\begin{enumerate}[start=0]
+\item \texttt{month} - Period type (YYYY-MM format)
+\item \texttt{customer} - String
+\item \texttt{style} - String
+\item \texttt{sku} - String
+\item \texttt{size} - String
+\item \texttt{pcs} - Float64
+\item \texttt{rate} - Float64
+\item \texttt{gross\_amt} - Float64
+\end{enumerate}
+
+\section{Output Files Generated}
+\begin{itemize}
+\item Intermediate Cleaned Dataset: \texttt{data/IntlsalesReport\_Cleaned.csv}
+\item Final Cleaned Dataset: \texttt{data/IntlsalesReport\_FinalCleaned.csv}
+\end{itemize}
+
+\section{Key Challenges and Solutions}
+\begin{enumerate}
+\item \textbf{Misplaced Data}: Problem: Customer names and style codes were in the date column. Solution: Relocated data using pattern identification.
+\item \textbf{Inconsistent Formats}: Problem: Multiple date formats. Solution: Regex-based conversion.
+\item \textbf{Missing SKU Values}: Problem: 1,434 missing values. Solution: Rule-based imputation.
+\end{enumerate}
+
+\section{Data Quality Metrics}
+\textbf{Before Cleaning}:
+\begin{itemize}
+\item Missing values: $\sim$1,040 rows (2.8\%)
+\item Inconsistent formats: Multiple
+\item Data type issues: 3 numeric columns as strings
+\item Misplaced data: Present in date column
+\end{itemize}
+
+\textbf{After Cleaning}:
+\begin{itemize}
+\item Missing values: 0 (0\%)
+\item Consistent formats: All standardized
+\item Data type issues: Resolved (all proper types)
+\item Misplaced data: Recovered and relocated
+\end{itemize}
+
+\textbf{Data Loss}:
+\begin{itemize}
+\item Rows dropped: 1,041 (2.8\% of original dataset)
+\item 1 row: Missing date
+\item 24 rows: Missing months with no recoverable data
+\item 1,016 rows: Months in non-transformable format
+\end{itemize} 
+
+\section{Recommendations for Future Use}
+\begin{enumerate}
+\item Data Validation: Implement checks at data entry.
+\item Format Standards: Establish standards for dates and sizes.
+\item Monitoring: Track data quality metrics over time.
+\item Documentation: Maintain records of cleaning steps.
+\end{enumerate}
+
+\section{Conclusion}
+
+The data cleaning process successfully transformed a raw, inconsistent dataset into a clean, structured, and analysis-ready dataset. Through systematic cleaning, intelligent data recovery, and feature engineering, the dataset quality was significantly improved:
+
+\begin{itemize}
+
+\item 100\% data completeness (no missing values)
+\item Consistent formatting across all columns
+\item Proper data types for all columns
+\item Recovered 1,039 misplaced data
+\item Feature engineering for time-based analysis
+\end{itemize}
+
+The cleaned dataset is now ready for exploratory data analysis, machine learning model development, and business intelligence applications.
+
+\end{document}
